@@ -8,7 +8,7 @@ class Player {
     
     // handle player horizontal speed
     this.velocityX = 0;
-    this.maximumVelocityX = 15;
+    this.maximumVelocityX = 10;
     this.accelerationX = 1.2;
     this.frictionX = 0.9;
     
@@ -18,7 +18,7 @@ class Player {
     this.accelerationY = 3;
     this.jumpVelocity = -30;
 
-    this.climbingSpeed = 5;
+    this.climbingSpeed = 8;
     
     // boolean values to check whether the player falls, collides with a slope or if he collides with a ladder
     this.isOnGround = false;
@@ -104,18 +104,19 @@ class Player {
         }
 
         if (object.constructor.name === "Ladder") {
-          if (state.keys[38] || state.keys[40]) {
+          if (state.keys[38] || state.keys[40] ||
+            state.keys[83] || state.keys[90]) {
             this.isOnLadder = true;
             this.isOnGround = false;
             this.velocityY = 0;
             this.velocityX = 0;
           }
 
-          if (state.keys[38]) {
+          if (state.keys[38] || state.keys[90]) {
             this.rectangle.y -= this.climbingSpeed;
           }
 
-          if (state.keys[40] && 
+          if ((state.keys[40] || state.keys[83]) && 
             me.y + me.height < you.y + you.height) {
             this.rectangle.y += this.climbingSpeed;
           }
@@ -128,6 +129,7 @@ class Player {
         }
 
         if (collides && this.velocityY > 0 && you.y >= me.y) {
+          me.y = you.y - me.height + 1;
           this.isOnGround = true;
           this.velocityY = 0;
           return;
@@ -167,6 +169,7 @@ class Player {
   }
 }
 
+// Generic Box object model
 class Box {
   constructor(sprite, rectangle) {
     this.sprite = sprite;
@@ -183,6 +186,7 @@ class Box {
   }
 }
 
+// Ladder object model
 class Ladder {
   constructor(sprite, rectangle) {
     this.sprite = sprite;
@@ -199,6 +203,7 @@ class Ladder {
   }
 }
 
+// Slopes object models
 class LeftSlope {
   constructor(sprite, rectangle) {
     this.sprite = sprite;
@@ -249,7 +254,10 @@ class Decal {
 
 // Game class & functions used to instantiate the game scene and PixiJS concepts 
 class Game {
-  constructor() {
+  constructor(w, h) {
+    this.w = w;
+    this.h = h;
+
     this.state = {
       "keys": {},
       "clicks": {},
@@ -258,7 +266,6 @@ class Game {
     }
 
     this.animate = this.animate.bind(this);
-    this.app = new PIXI.Application(window.innerWidth, window.innerHeight, {backgroundColor : 0x000});
   }
 
   get stage() {    
@@ -291,8 +298,8 @@ class Game {
 
   newRenderer() {
     return new PIXI.autoDetectRenderer(
-      window.innerWidth,
-      window.innerHeight,
+      this.w,
+      this.h,
       this.newRendererOptions()
     );
   }
@@ -315,7 +322,24 @@ class Game {
 
     this.state.objects.forEach((object) => {
       object.animate(this.state);
-    })
+    });
+
+    if (this.player) {
+      const offsetLeft = Math.round(
+        this.player.rectangle.x - (window.innerWidth / 2)
+      ) * -1;
+
+      const offsetTop = Math.round(
+        this.player.rectangle.y - (window.innerHeight / 2)
+      ) * -1;
+
+      this.element.style = `
+        transform:
+        scale(1.2)
+        translate(${offsetLeft}px)
+        translateY(${offsetTop}px)
+      `;
+    }
 
     this.renderer.render(this.stage);
   }
@@ -347,19 +371,23 @@ class Game {
   }
 
   addRendererTo(element) {
-    element.appendChild(this.app.view);
+    this.element = element;
+    this.element.appendChild(this.renderer.view);
   }
 
   addObject(object) {
     this.state.objects.push(object);
-    this.app.stage.addChild(object.sprite);
+    this.stage.addChild(object.sprite);
   }
 }
 
 // --- GAME SCENE SETUP --- //
 
 // Create new instance of the game
-const game = new Game();
+const width = window.innerWidth;
+const height = window.innerHeight + 200;
+
+const game = new Game(width, height);
 
 // Setup the floor sprite
 game.addObject(
@@ -369,8 +397,8 @@ game.addObject(
       64),
     new PIXI.Rectangle(
       0,
-      window.innerHeight - 64,
-      window.innerWidth,
+      height - 64,
+      width,
       64,
     ),
   )
@@ -383,8 +411,8 @@ game.addObject(
       "https://s3.eu-west-3.amazonaws.com/scrollity-training/box.png",
     ),
     new PIXI.Rectangle(
-      0 + 32,
-      window.innerHeight - 44 - 64,
+      0 + 128,
+      height - 44 - 64,
       44,
       44,
     ),
@@ -395,8 +423,8 @@ game.addObject(
   new Box(
     new PIXI.Sprite.fromImage("https://s3.eu-west-3.amazonaws.com/scrollity-training/platform.png"),
     new PIXI.Rectangle(
-      window.innerWidth - 400,
-      window.innerHeight - 64 - 200,
+      width - 400,
+      height - 64 - 200,
       256,
       64,
     ),
@@ -409,8 +437,8 @@ game.addObject(
       44, 
       200),
     new PIXI.Rectangle(
-      window.innerWidth - 250,
-      window.innerHeight - 64 - 200,
+      width - 250,
+      height - 64 - 200,
       44,
       200,
     ),
@@ -424,7 +452,7 @@ game.addObject(
     ),
     new PIXI.Rectangle(
       0 + 250,
-      window.innerHeight - 64 - 64 + 1,
+      height - 64 - 64 + 1,
       64,
       64,
     ),
@@ -438,7 +466,7 @@ game.addObject(
     ),
     new PIXI.Rectangle(
       0 + 250 + 64 + 128,
-      window.innerHeight - 64 - 64 + 1,
+      height - 64 - 64 + 1,
       64,
       64,
     ),
@@ -452,7 +480,7 @@ game.addObject(
     ),
     new PIXI.Rectangle(
       0 + 250,
-      window.innerHeight - 64 + 1,
+      height - 64 + 1,
       128,
       64,
     ),
@@ -466,26 +494,30 @@ game.addObject(
     ),
     new PIXI.Rectangle(
       0 + 250 + 64,
-      window.innerHeight - 64 - 64 + 1,
+      height - 64 - 64 + 1,
       128,
       64,
     ),
   )
 );
 
-// Instantiate the player character
-game.addObject(
-  new Player(
-    new PIXI.Sprite.fromImage("https://s3.eu-west-3.amazonaws.com/scrollity-training/player-idle.png"),
-    new PIXI.Rectangle(
-      window.innerWidth / 2,
-      window.innerHeight / 2,
-      44,
-      56,
-    ),
-  )
+// Instantiate the player character and add it to the world as a constant
+const player = new Player(
+  new PIXI.Sprite.fromImage("https://s3.eu-west-3.amazonaws.com/scrollity-training/player-idle.png"),
+  new PIXI.Rectangle(
+    Math.round(width / 2),
+    Math.round(height / 2),
+    44,
+    56,
+  ),
 );
 
+game.addObject(player);
+game.player = player;
+
+// Render the whole game scene
 game.addEventListenerTo(window);
-game.addRendererTo(document.body);
+
+// Add renderer to the Camera div so that it renders the game world only when the player moves
+game.addRendererTo(document.querySelector(".camera"));
 game.animate();
