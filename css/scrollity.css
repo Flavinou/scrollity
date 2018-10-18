@@ -22,10 +22,34 @@ canvas {
   pointer-events: none;
 }
 
-.camera {
+.camera, .hud {
   width: 100%;
   height: 100%;
   position: absolute;
   top: 0;
   left: 0;
+}
+
+.hud .heart {
+  width: 32px;
+  height: 28px;
+  background-image: url("https://s3.eu-west-3.amazonaws.com/scrollity-training/heart-red.png");
+  position: absolute;
+  top: 15px;
+}
+
+.hud .heart-1 {
+  left: 15px;
+}
+
+.hud .heart-2 {
+  left: 57px;
+}
+
+.hud  .heart-3 {
+    left: 99px;
+}
+
+.hud .heart-grey {
+  background-image: url("https://s3.eu-west-3.amazonaws.com/scrollity-training/heart-grey.png");
 }

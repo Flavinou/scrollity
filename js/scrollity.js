@@ -62,6 +62,49 @@ class Player {
           me.y < you.y + you.height &&
           me.y + me.height > you.y) {
 
+        if (object.constructor.name === "Enemy" && !this.invulnerable) {
+          // collision detection for jumping on top of enemy's head
+          if (you.x < me.x && (me.x + me.width) >= you.x && (me.y + me.height) >= you.y) {
+            // prevent player from jumping if his vertical speed isn't null
+            if (this.velocityY != 0) {
+              this.isOnGround = false;
+            }
+
+            this.velocityY = 0;
+
+            // scope test tells that we're close to the enemy, just have to test if we collide with the top of enemy's sprite
+            if ((me.y + me.height) >= you.y && (me.y + me.height) <= (you.y + you.height)) {
+              // knock back player just like Mario and remove the enemy's sprite from the game
+              this.velocityY -= 20;
+              state.game.removeObject(object);
+            }
+          } else {
+            // general horizontal collision with the enemy
+            if (this.velocityX >= 0) {
+              this.velocityX = -10;
+            } else {
+              this.velocityX = 10;
+            }
+
+            this.velocityY *= -1;
+
+            this.invulnerable = true;
+            this.sprite.alpha = 0.5;
+
+            setTimeout(() => {
+              this.invulnerable = false;
+              this.sprite.alpha = 1;
+            }, 1000);
+
+            // remove one heart from player's health
+            if (typeof this.onHurt === "function") {
+              this.onHurt.apply(this);
+            }
+          }
+
+          return;
+        }
+
         if (object.constructor.name === "LeftSlope") {
           const meCenter = Math.round(me.x + (me.width / 2));
           const youRight = you.x + you.width;
@@ -150,7 +193,7 @@ class Player {
           return;
         }
       }
-    })
+    });
 
     if (state.keys[32] && this.isOnGround) { // Press spacebar to jump
         this.velocityY = this.jumpVelocity;
@@ -160,8 +203,30 @@ class Player {
 
     this.rectangle.x += this.velocityX;
 
-    if (!this.isOnLadder) {
+    if (!this.isOnLadder && !this.isOnSlope) {
       this.rectangle.y += this.velocityY;
+    }
+
+    if (this.isOnGround && Math.abs(this.velocityX) < 0.5) {
+      state.game.stage.removeChild(this.sprite);
+      state.game.stage.addChild(this.idleLeftSprite);
+      this.sprite = this.idleLeftSprite;
+    }
+
+    if (this.isOnGround && Math.abs(this.velocityX) > 0.5) {
+      state.game.stage.removeChild(this.sprite);
+      state.game.stage.addChild(this.runLeftSprite);
+      this.sprite = this.runLeftSprite;
+    }
+
+    if (this.isOnGround && this.velocityX > 0) {
+      this.sprite.anchor.x = 0.5;
+      this.sprite.scale.x = 1;
+    }
+
+    if (this.isOnGround && this.velocityX < 0) {
+      this.sprite.anchor.x = 0.5;
+      this.sprite.scale.x = -1;
     }
 
     this.sprite.x = this.rectangle.x;
@@ -186,69 +251,76 @@ class Box {
   }
 }
 
-// Ladder object model
-class Ladder {
+// Custom object model for the enemies of the game
+// - the player needs to jump on them in order to kill them
+class Enemy extends Box {
   constructor(sprite, rectangle) {
-    this.sprite = sprite;
-    this.rectangle = rectangle;
-  }
+    super(sprite, rectangle);
 
-  get collides() {
-    return false;
+    this.limit = 200;
+    this.left = true;
+
+    this.sprites = [
+      "https://s3.eu-west-3.amazonaws.com/scrollity-training/blob-idle-1.png",
+      "https://s3.eu-west-3.amazonaws.com/scrollity-training/blob-idle-2.png"
+    ];
+
+    this.leftSprite = new PIXI.Sprite.fromImage(this.sprites[0]);
+    this.rightSprite = new PIXI.Sprite.fromImage(this.sprites[1]);
   }
 
   animate(state) {
+    if (this.left) {
+      state.game.stage.removeChild(this.sprite);
+      state.game.stage.addChild(this.leftSprite);
+      this.sprite = this.leftSprite;
+
+      this.rectangle.x -= 2;
+    }
+
+    if (!this.left) {
+      state.game.stage.removeChild(this.sprite);
+      state.game.stage.addChild(this.rightSprite);
+      this.sprite = this.rightSprite;
+
+      this.rectangle.x += 2;
+    }
+
+    this.limit -= 2;
+
+    if (this.limit <= 0) {
+      this.left = !this.left;
+      this.limit = 200;
+    }
+
     this.sprite.x = this.rectangle.x;
     this.sprite.y = this.rectangle.y;
+  }
+}
+
+// Ladder object model
+class Ladder extends Box {
+  get collides() {
+    return false;
   }
 }
 
 // Slopes object models
-class LeftSlope {
-  constructor(sprite, rectangle) {
-    this.sprite = sprite;
-    this.rectangle = rectangle;
-  }
-
+class LeftSlope extends Box {
   get collides() {
     return false;
-  }
-
-  animate(state) {
-    this.sprite.x = this.rectangle.x;
-    this.sprite.y = this.rectangle.y;
   }
 }
 
-class RightSlope {
-  constructor(sprite, rectangle) {
-    this.sprite = sprite;
-    this.rectangle = rectangle;
-  }
-
+class RightSlope extends Box {
   get collides() {
     return false;
-  }
-
-  animate(state) {
-    this.sprite.x = this.rectangle.x;
-    this.sprite.y = this.rectangle.y;
   }
 }
 
-class Decal {
-  constructor(sprite, rectangle) {
-    this.sprite = sprite;
-    this.rectangle = rectangle;
-  }
-
+class Decal extends Box {
   get collides() {
     return false;
-  }
-
-  animate(state) {
-    this.sprite.x = this.rectangle.x;
-    this.sprite.y = this.rectangle.y;
   }
 }
 
@@ -262,7 +334,8 @@ class Game {
       "keys": {},
       "clicks": {},
       "mouse": {},
-      "objects": []
+      "objects": [],
+      "game": this
     }
 
     this.animate = this.animate.bind(this);
@@ -324,6 +397,7 @@ class Game {
       object.animate(this.state);
     });
 
+    // Add camera logic, focused on player
     if (this.player) {
       const offsetLeft = Math.round(
         this.player.rectangle.x - (window.innerWidth / 2)
@@ -378,6 +452,16 @@ class Game {
   addObject(object) {
     this.state.objects.push(object);
     this.stage.addChild(object.sprite);
+  }
+
+  removeObject(object) {
+    this.state.objects = this.state.objects.filter(
+      function(next) {
+        return next !== object;
+      }
+    );
+
+    this.stage.removeChild(object.sprite);
   }
 }
 
@@ -501,19 +585,114 @@ game.addObject(
   )
 );
 
-// Instantiate the player character and add it to the world as a constant
-const player = new Player(
-  new PIXI.Sprite.fromImage("https://s3.eu-west-3.amazonaws.com/scrollity-training/player-idle.png"),
-  new PIXI.Rectangle(
-    Math.round(width / 2),
-    Math.round(height / 2),
-    44,
-    56,
+// Instantiate a new enemy to be interacted with
+game.addObject(
+  new Enemy(
+    new PIXI.Sprite.fromImage(
+      "https://s3.eu-west-3.amazonaws.com/scrollity-training/blob-idle-1.png",
+    ),
+    new PIXI.Rectangle(
+      width - 450,
+      height - 64 - 48,
+      48,
+      48,
+    ),
   ),
 );
 
+// Handle player's character animation by replacing its default sprite by an AnimatedSprite (cf. PixiJS documentation)
+const playerIdleLeftImages = [
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-idle-1.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-idle-2.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-idle-3.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-idle-4.png"
+];
+
+// Handle player's character animation while running
+const playerRunLeftImages = [
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-1.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-2.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-3.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-4.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-5.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-6.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-7.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-8.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-9.png",
+  "https://s3.eu-west-3.amazonaws.com/scrollity-training/player-run-10.png"
+];
+
+const playerIdleLeftTextures = playerIdleLeftImages.map(
+  function(image) {
+    return PIXI.Texture.fromImage(image);
+  }
+);
+
+const playerRunLeftTextures = playerRunLeftImages.map(
+  function(image) {
+    return PIXI.Texture.fromImage(image);
+  }
+);
+
+const playerIdleLeftSprite = new PIXI.extras.AnimatedSprite(playerIdleLeftTextures);
+const playerRunLeftSprite = new PIXI.extras.AnimatedSprite(playerRunLeftTextures);
+
+playerIdleLeftSprite.play();
+playerIdleLeftSprite.animationSpeed = 0.12;
+
+playerRunLeftSprite.play();
+playerRunLeftSprite.animationSpeed = 0.2;
+
+// Instantiate the player character and add it to the world as a constant
+const player = new Player(
+  playerIdleLeftSprite,
+  new PIXI.Rectangle(
+    Math.round(width / 2),
+    Math.round(height / 2),
+    48,
+    56,
+  )
+);
+
+player.idleLeftSprite = playerIdleLeftSprite;
+player.runLeftSprite = playerRunLeftSprite;
+
 game.addObject(player);
 game.player = player;
+
+// Function displaying the game over text
+function end() {
+  // Create the text sprite and add it to the game scene by preventing the player from.. playing
+  let style = new PIXI.TextStyle({
+    fontFamily: "Tahoma",
+    fontSize: 64,
+    fill: "white"
+  });
+
+  message = new PIXI.Text("You lost !", style);
+
+  message.x = game.player.rectangle.x - 175;
+  message.y = game.player.rectangle.y - 64;
+
+  game.stage.addChild(message);
+}
+
+// Display player's health, heart by heart
+var hearts = 3;
+
+player.onHurt = function() {
+  document.querySelector(`.heart-${hearts}`).className += " heart-grey";
+
+  hearts--;
+
+  if (hearts < 1) {
+    end();
+
+    game.removeObject(player);
+
+    return;
+  }
+}
 
 // Render the whole game scene
 game.addEventListenerTo(window);
