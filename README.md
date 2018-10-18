@@ -8,9 +8,9 @@ Consider supporting his work at : https://www.patreon.com/assertchris
 Just open the `scrollity.html` file in your favorite web browser and see the magic happen.
 
 ## Commands
-* `Z Q S D` or pressing the keyboard arrows to move the player character
-* <kbd>Space</kbd> to jump (try to jump on the enemy's head...)
-* `Z` or `Up arrow` to move up the ladder
+* <kbd>Z</kbd> <kbd>Q</kbd> <kbd>S</kbd> <kbd>D</kbd> or pressing the keyboard arrows to move the player character.
+* <kbd>Space</kbd> to jump (try to jump on the enemy's head...).
+* <kbd>Z</kbd> or <kbd>↑</kbd> to move up the ladder.
 
 *If you want to "play" again, you'll have to refresh your browser*
 
