@@ -129,7 +129,7 @@ class Player {
         if (object.constructor.name === "RightSlope") {
           const meCenter = Math.round(me.x + (me.width / 2));
           const youBottom = you.y + you.height;
-          const highest = you.y - you.height;
+          const highest = you.y - me.height;
           const lowest = youBottom - me.height;
 
           this.isOnGround = true;
