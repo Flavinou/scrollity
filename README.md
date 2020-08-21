@@ -5,7 +5,7 @@ Consider supporting his work at : https://www.patreon.com/assertchris
 
 
 # How to play
-Just open the `scrollity.html` file in your favorite web browser and see the magic happen.
+Download the project, unzip it somewhere and just open the `scrollity.html` file in your favorite web browser and see the magic happen.
 
 ## Commands
 * <kbd>Z</kbd> <kbd>Q</kbd> <kbd>S</kbd> <kbd>D</kbd> or pressing the keyboard arrows to move the player character.
